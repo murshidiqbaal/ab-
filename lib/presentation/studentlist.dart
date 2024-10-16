@@ -14,6 +14,7 @@ class StudentListScreen extends StatefulWidget {
     required this.collection,
     required String title,
     required String amount,
+    required List<Student> studentsWithLessThanAmount,
   });
 
   @override
@@ -23,7 +24,10 @@ class StudentListScreen extends StatefulWidget {
 
 class _StudentListScreenState extends State<StudentListScreen> {
   int totalSum = 0;
-  int totalBalanceSum = 0;
+  int totalBalanceSum1 = 0;
+  int totalBalanceSum2 = 0;
+  int totalsum1 = 0;
+  int results = 0;
 
   // ignore: unused_field
   List<Student> _filteredStudents = [];
@@ -43,30 +47,26 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
   void _calculateTotal() {
     int total = 0;
-    int totalBalance = 0;
+    //int totalNegativeBalance = 0;
 
     for (var student in widget.collection.studentList) {
-      int balanceValue = int.tryParse(student.balance ?? '0') ?? 0;
+      // int balanceValue = int.tryParse(student.balance ?? '0') ?? 0;
       int amountValue = int.tryParse(widget.collection.amount) ?? 0;
 
       if (student.isSelected) {
         total += amountValue;
-        int positive;
+        //int result = balanceValue;
 
-        // Calculate the result based on balance and amount
-        int result = (balanceValue - amountValue);
-        if (result < 0) {
-          positive = result + result;
-        } else {
-          positive = result;
-        }
-        totalBalance += positive; // Adjust the total balance sum
+        // Add to negative balance total if the result is negative
+        // if (results < 0) {
+        //   totalNegativeBalance += results.abs();
+        // }
       }
     }
 
     setState(() {
       totalSum = total;
-      totalBalanceSum = totalBalance;
+      totalsum1 = totalBalanceSum1;
     });
   }
 
@@ -84,6 +84,16 @@ class _StudentListScreenState extends State<StudentListScreen> {
         // If checkbox is deselected, clear the payment method and balance
         widget.collection.studentList[index].paymentMethod = '';
         widget.collection.studentList[index].balance = null;
+
+        // Recalculate the totalBalanceSum1 based on the deselected result
+        // int balanceValue =
+        //     int.tryParse(widget.collection.studentList[index].balance ?? '0') ??
+        //         0;
+        // int amountValue = int.tryParse(widget.collection.amount) ?? 0;
+        //int result = (balanceValue - amountValue);
+        // if (result < 0) {
+        //   totalBalanceSum1 -= result; // Adjust the negative balance total
+        // }
       }
 
       // Save the updated state into Hive
@@ -134,7 +144,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 Controller: _balanceController,
                 LabelText: Text('Correption'),
                 ObscureText: false,
-                KeyBoardType: TextInputType.text,
+                KeyBoardType: TextInputType.number,
               ),
             ],
           ),
@@ -289,18 +299,22 @@ class _StudentListScreenState extends State<StudentListScreen> {
                                       int.tryParse(widget.collection.amount) ??
                                           0;
 
-                                  int result = balanceValue - amountValue;
+                                  results = balanceValue - amountValue;
+                                  int result = results.abs();
+                                  results < 0
+                                      ? totalBalanceSum1 += result
+                                      : totalBalanceSum2 += results;
                                   // if (result < 0) {
                                   //   addToStudentsWithLessThanAmount(index);
                                   //   //print(studentsWithLessThanAmount);
                                   // }
                                   return Text(
-                                    result >= 0
-                                        ? '+$result'
-                                        : '$result', // Show positive or negative result
+                                    results >= 0
+                                        ? '+$results'
+                                        : '$results', // Show positive or negative results
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: result >= 0
+                                      color: results >= 0
                                           ? Colors.green
                                           : Colors.red,
                                     ),
@@ -335,9 +349,17 @@ class _StudentListScreenState extends State<StudentListScreen> {
               ),
               Row(
                 children: [
-                  //Text('₹(${totalBalanceSum})'),
+                  // if (totalBalanceSum1 != 0)
+                  //   Text(
+                  //     '₹($totalsum1)',
+                  //     style: const TextStyle(
+                  //       fontSize: 20,
+                  //       color: Colors.red,
+                  //       fontWeight: FontWeight.bold,
+                  //     ),
+                  //   ),
                   Text(
-                    '₹${totalSum.toString()}',
+                    ' ₹${totalSum.toString()}',
                     style: const TextStyle(
                       fontSize: 20,
                       color: Colors.black,

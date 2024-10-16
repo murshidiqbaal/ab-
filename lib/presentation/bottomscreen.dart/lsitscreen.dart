@@ -229,6 +229,7 @@ class _ListScreenState extends State<ListScreen> {
                               collection: collection,
                               title: _titleController.text,
                               amount: _amountController.text,
+                              studentsWithLessThanAmount: [],
                             ),
                           ));
                         },
