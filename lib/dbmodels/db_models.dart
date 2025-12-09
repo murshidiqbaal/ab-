@@ -4,7 +4,7 @@ part 'db_models.g.dart'; // Run `flutter packages pub run build_runner build` to
 
 @HiveType(typeId: 2)
 class Memory {
-  @HiveField(0)
+  @HiveField(10)
   String imagePath;
 
   Memory({required this.imagePath});

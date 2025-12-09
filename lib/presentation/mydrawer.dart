@@ -1,6 +1,7 @@
 import 'package:_abm/presentation/bottomscreen.dart/calculatescreen.dart';
 import 'package:_abm/presentation/bottomscreen.dart/lsitscreen.dart';
 import 'package:_abm/presentation/bottomscreen.dart/profilescreen.dart';
+import 'package:_abm/theme/theme_manager.dart';
 import 'package:flutter/material.dart';
 
 class MyDrawer extends StatelessWidget {
@@ -29,7 +30,9 @@ class MyDrawer extends StatelessWidget {
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: IconButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      themeManager.setTheme(ThemeMode.light);
+                    },
                     icon: Icon(Icons.light_mode),
                     color: Colors.black,
                   ),
@@ -43,7 +46,9 @@ class MyDrawer extends StatelessWidget {
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: IconButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      themeManager.setTheme(ThemeMode.dark);
+                    },
                     icon: Icon(Icons.dark_mode),
                     color: Colors.white,
                   ),

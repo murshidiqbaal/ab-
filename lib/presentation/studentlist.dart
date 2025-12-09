@@ -1,6 +1,7 @@
 // ignore_for_file: unused_element
 
 import 'package:_abm/constants/mytextfield.dart';
+import 'package:_abm/utils/share_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -28,6 +29,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
   int totalBalanceSum2 = 0;
   int totalsum1 = 0;
   int results = 0;
+  int selectedCount = 0;
 
   // ignore: unused_field
   List<Student> _filteredStudents = [];
@@ -47,26 +49,37 @@ class _StudentListScreenState extends State<StudentListScreen> {
 
   void _calculateTotal() {
     int total = 0;
-    //int totalNegativeBalance = 0;
+    int count = 0;
+    int surplus = 0; // + value
+    int deficit = 0; // - value
+
+    int amountModel = int.tryParse(widget.collection.amount) ?? 0;
 
     for (var student in widget.collection.studentList) {
-      // int balanceValue = int.tryParse(student.balance ?? '0') ?? 0;
-      int amountValue = int.tryParse(widget.collection.amount) ?? 0;
-
       if (student.isSelected) {
-        total += amountValue;
-        //int result = balanceValue;
+        // Logic Change:
+        // amountModel = Expected Amount (from Collection)
+        // student.balance = Actual Paid Amount (entered in correction)
+        // If balance is null, assume they paid the full amountModel
 
-        // Add to negative balance total if the result is negative
-        // if (results < 0) {
-        //   totalNegativeBalance += results.abs();
-        // }
+        double paidAmount = student.balance ?? amountModel.toDouble();
+        total += paidAmount.toInt();
+
+        int diff = (paidAmount - amountModel).toInt();
+
+        if (diff > 0) {
+          surplus += diff;
+        } else if (diff < 0) {
+          deficit += diff.abs();
+        }
       }
     }
 
     setState(() {
       totalSum = total;
-      totalsum1 = totalBalanceSum1;
+      totalBalanceSum2 = surplus;
+      totalBalanceSum1 = deficit;
+      selectedCount = count;
     });
   }
 
@@ -103,12 +116,12 @@ class _StudentListScreenState extends State<StudentListScreen> {
   }
 
   void _filterStudentsWithLessAmount() {
-    int amountValue = widget.collection.amount as int;
+    int amountValue = int.tryParse(widget.collection.amount) ?? 0;
 
     setState(() {
       studentsWithLessThanAmount =
           widget.collection.studentList.where((student) {
-        int balanceValue = int.tryParse(student.balance ?? '0') ?? 0;
+        double balanceValue = student.balance ?? 0.0;
         return (balanceValue - amountValue) < 0;
       }).toList();
     });
@@ -125,6 +138,9 @@ class _StudentListScreenState extends State<StudentListScreen> {
             children: [
               ListTile(
                 title: const Text('GPay'),
+                trailing: selector == 1
+                    ? Icon(Icons.check_circle, color: Colors.green)
+                    : null,
                 onTap: () {
                   setState(() {
                     selector = 1;
@@ -133,6 +149,9 @@ class _StudentListScreenState extends State<StudentListScreen> {
               ),
               ListTile(
                 title: const Text('Liquid'),
+                trailing: selector == 2
+                    ? Icon(Icons.check_circle, color: Colors.blue)
+                    : null,
                 onTap: () {
                   setState(() {
                     selector = 2;
@@ -154,7 +173,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 // Save the entered balance into the specific student
                 setState(() {
                   widget.collection.studentList[index].balance =
-                      _balanceController.text;
+                      double.tryParse(_balanceController.text);
 
                   // int balance = _balanceController.text as int;
                   // int? Amount = int.tryParse(widget.collection.amount);
@@ -172,6 +191,7 @@ class _StudentListScreenState extends State<StudentListScreen> {
                     selector = null;
                   }
                   _balanceController.clear();
+                  _calculateTotal(); // Recalculate totals immediately after save
                 });
                 Navigator.pop(context);
               },
@@ -194,28 +214,18 @@ class _StudentListScreenState extends State<StudentListScreen> {
   }
 
   void _filterStudents(String query) {
-    final List<Student> filteredList =
-        widget.collection.studentList.where((student) {
-      return student.name.toLowerCase().contains(query.toLowerCase());
-    }).toList();
-
-    setState(() {
-      _filteredStudents = filteredList;
-    });
-
-    if (filteredList.isNotEmpty) {
-      // Get the index of the first matching student and scroll to their position
-      int index = widget.collection.studentList.indexWhere((student) =>
-          student.name.toLowerCase().contains(query.toLowerCase()));
-
-      if (index != -1) {
-        _scrollController.animateTo(
-          index * 60.0, // Assumes each ListTile has a height of ~60 pixels
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        );
-      }
+    if (query.isEmpty) {
+      setState(() {
+        _filteredStudents = widget.collection.studentList;
+      });
+      return;
     }
+    setState(() {
+      _filteredStudents = widget.collection.studentList
+          .where((student) =>
+              student.name.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
   }
 
   void addToStudentsWithLessThanAmount(index) {
@@ -226,24 +236,27 @@ class _StudentListScreenState extends State<StudentListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      //backgroundColor: Color.fromRGBO(253, 245, 230, 0.51),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Color.fromRGBO(240, 240, 240, 1.0),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         title: _isSearching
             ? TextField(
                 controller: _searchController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Search here...',
                   border: InputBorder.none,
-                  hintStyle: TextStyle(color: Colors.black),
+                  hintStyle: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
-                style: const TextStyle(color: Colors.black),
+                style:
+                    TextStyle(color: Theme.of(context).colorScheme.onSurface),
                 onChanged: (query) => _filterStudents(query), // Update search
                 autofocus: true,
               )
             : Text(
                 '${widget.collection.title.toUpperCase()}  ${widget.collection.amount}₹',
-                style: const TextStyle(color: Colors.black),
+                style:
+                    TextStyle(color: Theme.of(context).colorScheme.onSurface),
               ),
         actions: [
           IconButton(
@@ -257,112 +270,179 @@ class _StudentListScreenState extends State<StudentListScreen> {
               });
             },
           ),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'text') {
+                shareCollectionAsText(widget.collection);
+              } else if (value == 'excel') {
+                generateAndShareExcel(widget.collection);
+              } else if (value == 'copy') {
+                copyCollectionToClipboard(context, widget.collection);
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'text',
+                child: ListTile(
+                  leading: Icon(Icons.share, color: Colors.blue),
+                  title: Text('Share as Text'),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'excel',
+                child: ListTile(
+                  leading: Icon(Icons.table_chart, color: Colors.green),
+                  title: Text('Export to Excel'),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'copy',
+                child: ListTile(
+                  leading: Icon(Icons.copy, color: Colors.orange),
+                  title: Text('Copy to Clipboard'),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController, // Attach ScrollController
-              itemCount: widget.collection.studentList.length,
-              itemBuilder: (context, index) {
-                final student = widget.collection.studentList[index];
-                return ListTile(
-                  title: Row(
-                    children: [
-                      Text('${index + 1}.  '),
-                      Text(
-                        student.name,
-                        style: GoogleFonts.electrolize(),
-                      ),
-                    ],
-                  ),
-                  subtitle: student.paymentMethod.isNotEmpty
-                      ? Row(
+            child: _filteredStudents.isEmpty
+                ? Center(
+                    child: Text(
+                      'No student found',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 18),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _scrollController, // Attach ScrollController
+                    itemCount: _filteredStudents.length,
+                    itemBuilder: (context, index) {
+                      final student = _filteredStudents[index];
+                      // Find the original index for updates
+                      final originalIndex =
+                          widget.collection.studentList.indexOf(student);
+
+                      return ListTile(
+                        tileColor:
+                            null, // Removed highlighting as we filter now
+                        title: Row(
                           children: [
                             Text(
-                              'Payment: ${student.paymentMethod}  ',
+                              '${index + 1}.  ',
                               style: TextStyle(
-                                fontSize: 14,
-                                color: student.paymentMethod == 'GPay'
-                                    ? Colors.green
-                                    : Colors.blue,
-                              ),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant),
+                            ), // Filtered index
+                            Text(
+                              student.name,
+                              style: GoogleFonts.electrolize(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface),
                             ),
-                            if (student.balance != null &&
-                                student.balance!.isNotEmpty)
-                              Builder(
-                                builder: (context) {
-                                  int balanceValue =
-                                      int.tryParse(student.balance ?? '0') ?? 0;
-                                  int amountValue =
-                                      int.tryParse(widget.collection.amount) ??
-                                          0;
-
-                                  results = balanceValue - amountValue;
-                                  int result = results.abs();
-                                  results < 0
-                                      ? totalBalanceSum1 += result
-                                      : totalBalanceSum2 += results;
-                                  // if (result < 0) {
-                                  //   addToStudentsWithLessThanAmount(index);
-                                  //   //print(studentsWithLessThanAmount);
-                                  // }
-                                  return Text(
-                                    results >= 0
-                                        ? '+$results'
-                                        : '$results', // Show positive or negative results
+                          ],
+                        ),
+                        subtitle: student.paymentMethod.isNotEmpty
+                            ? Row(
+                                children: [
+                                  Text(
+                                    'Payment: ${student.paymentMethod}  ',
                                     style: TextStyle(
                                       fontSize: 14,
-                                      color: results >= 0
+                                      color: student.paymentMethod == 'GPay'
                                           ? Colors.green
-                                          : Colors.red,
+                                          : Colors.blue,
                                     ),
-                                  );
-                                },
-                              ),
-                          ],
-                        )
-                      : null,
-                  trailing: Checkbox(
-                    value: student.isSelected,
-                    onChanged: (bool? value) {
-                      _toggleSelection(index);
+                                  ),
+                                  if (student.balance != null)
+                                    Builder(
+                                      builder: (context) {
+                                        double paidAmount =
+                                            student.balance ?? 0.0;
+                                        double expectedAmount = double.tryParse(
+                                                widget.collection.amount) ??
+                                            0.0;
+
+                                        // results = Difference (Paid - Expected)
+                                        results = (paidAmount - expectedAmount)
+                                            .toInt();
+
+                                        return Text(
+                                          results > 0
+                                              ? '+$results'
+                                              : '$results', // Show positive or negative
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: results > 0
+                                                ? Colors.green
+                                                : Colors
+                                                    .red, // Red for negative
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                ],
+                              )
+                            : null,
+                        trailing: Checkbox(
+                          value: student.isSelected,
+                          onChanged: (bool? value) {
+                            if (originalIndex != -1) {
+                              _toggleSelection(originalIndex);
+                            }
+                          },
+                          fillColor: MaterialStateProperty.resolveWith(
+                              (states) => Colors.blueAccent),
+                        ),
+                      );
                     },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
       bottomNavigationBar: BottomAppBar(
-        color: Color.fromRGBO(240, 240, 240, 1.0),
+        color: Theme.of(context).appBarTheme.backgroundColor,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Total :',
-                style: TextStyle(fontSize: 20, color: Colors.black),
+              Text(
+                'Total ($selectedCount) :',
+                style: TextStyle(
+                    fontSize: 20,
+                    color: Theme.of(context).textTheme.bodyLarge?.color),
               ),
               Row(
                 children: [
-                  // if (totalBalanceSum1 != 0)
-                  //   Text(
-                  //     '₹($totalsum1)',
-                  //     style: const TextStyle(
-                  //       fontSize: 20,
-                  //       color: Colors.red,
-                  //       fontWeight: FontWeight.bold,
-                  //     ),
-                  //   ),
+                  if (totalBalanceSum2 > 0)
+                    Text(
+                      '+$totalBalanceSum2 ',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  if (totalBalanceSum1 > 0)
+                    Text(
+                      '-$totalBalanceSum1 ',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   Text(
                     ' ₹${totalSum.toString()}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
-                      color: Colors.black,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

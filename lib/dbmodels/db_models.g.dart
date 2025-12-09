@@ -17,7 +17,7 @@ class MemoryAdapter extends TypeAdapter<Memory> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Memory(
-      imagePath: fields[0] as String,
+      imagePath: fields[10] as String,
     );
   }
 
@@ -25,7 +25,7 @@ class MemoryAdapter extends TypeAdapter<Memory> {
   void write(BinaryWriter writer, Memory obj) {
     writer
       ..writeByte(1)
-      ..writeByte(0)
+      ..writeByte(10)
       ..write(obj.imagePath);
   }
 

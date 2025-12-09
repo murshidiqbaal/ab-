@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:slide_to_act/slide_to_act.dart';
 
 import '../../constants/mytextfield.dart';
@@ -14,7 +15,6 @@ class ListScreen extends StatefulWidget {
   const ListScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _ListScreenState createState() => _ListScreenState();
 }
 
@@ -23,6 +23,8 @@ class _ListScreenState extends State<ListScreen> {
   final TextEditingController _amountController = TextEditingController();
   final Box<Collection> _collectionsBox =
       Hive.box<Collection>('collectionsBox');
+
+  String selectedFilter = 'All'; // ✅ Filter control (All, Paid, Unpaid)
 
   final List<String> studentNames = [
     'ABHIJITH MOHANAN',
@@ -99,7 +101,9 @@ class _ListScreenState extends State<ListScreen> {
         .map((studentName) => Student(
               name: studentName,
               isSelected: false,
-              // studentsWithLessThanAmount: [],
+              studentsWithLessThanAmount: [],
+              balance: 0.0,
+              paymentMethod: '',
             ))
         .toList();
 
@@ -109,8 +113,7 @@ class _ListScreenState extends State<ListScreen> {
       studentList: students,
     );
 
-    // Insert the new collection at the start of the list
-    _collectionsBox.add(collection); // Insert at index 0 to show at the top
+    _collectionsBox.add(collection);
     setState(() {});
   }
 
@@ -120,26 +123,23 @@ class _ListScreenState extends State<ListScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Create Collection'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              MyTextField(
-                HintText: 'Enter title',
-                Controller: _titleController,
-                LabelText: const Text('Title'),
-                ObscureText: false,
-                KeyBoardType: TextInputType.text,
-              ),
-              const SizedBox(height: 10),
-              MyTextField(
-                HintText: 'Enter amount',
-                Controller: _amountController,
-                LabelText: const Text('Amount'),
-                ObscureText: false,
-                KeyBoardType: TextInputType.number,
-              ),
-            ],
-          ),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            MyTextField(
+              HintText: 'Enter title',
+              Controller: _titleController,
+              LabelText: const Text('Title'),
+              ObscureText: false,
+              KeyBoardType: TextInputType.text,
+            ),
+            const SizedBox(height: 10),
+            MyTextField(
+              HintText: 'Enter amount',
+              Controller: _amountController,
+              LabelText: const Text('Amount'),
+              ObscureText: false,
+              KeyBoardType: TextInputType.number,
+            ),
+          ]),
           actions: [
             SlideAction(
               text: 'Slide to create',
@@ -165,82 +165,171 @@ class _ListScreenState extends State<ListScreen> {
     );
   }
 
+  void _shareCollection(Collection collection) {
+    String text =
+        '*Collection:* ${collection.title}\n*Amount:* ${collection.amount}\n*Selected:* ${collection.studentList.where((s) => s.isSelected).length}/${collection.studentList.length}\n\n';
+    for (int i = 0; i < collection.studentList.length; i++) {
+      var student = collection.studentList[i];
+      String status = student.isSelected ? 'Paid' : 'Pending';
+      String paymentInfo =
+          student.paymentMethod.isNotEmpty ? '(${student.paymentMethod})' : '';
+      text += '${i + 1}. ${student.name} : $status $paymentInfo\n';
+    }
+    Share.share(text, subject: 'Collection Report');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: MyDrawer(),
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Color.fromRGBO(240, 240, 240, 1.0),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         title: Center(
           child: AvatarGlow(
             duration: const Duration(seconds: 2),
-            glowColor: const Color.fromARGB(255, 224, 207, 50),
+            glowColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.blueAccent
+                : const Color.fromARGB(255, 224, 207, 50),
             child: Text(
               'A B M',
-              style: GoogleFonts.anaheim(color: Colors.black87),
+              style: GoogleFonts.anaheim(
+                  color: Theme.of(context).appBarTheme.titleTextStyle?.color ??
+                      Colors.black87),
             ),
           ),
         ),
       ),
-      body: ValueListenableBuilder(
-        valueListenable: _collectionsBox.listenable(),
-        builder: (context, Box<Collection> box, _) {
-          if (box.isEmpty) {
-            return const Center(child: Text('No collections added.'));
-          }
-
-          return ListView.separated(
-            separatorBuilder: (context, index) => const Divider(
-              indent: 20,
-              endIndent: 20,
+      body: Column(
+        children: [
+          // ✅ Filter dropdown
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text('Filter: ',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+                DropdownButton<String>(
+                  value: selectedFilter,
+                  items: ['All', 'Paid', 'Unpaid']
+                      .map((e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedFilter = value!;
+                    });
+                  },
+                ),
+              ],
             ),
-            itemCount: box.length,
-            itemBuilder: (context, index) {
-              final collection = box.getAt(index);
-              return Column(
-                children: [
-                  Slidable(
-                    endActionPane:
-                        ActionPane(motion: const StretchMotion(), children: [
-                      SlidableAction(
-                        onPressed: ((context) async {
-                          await box.deleteAt(index);
-                          setState(() {});
-                        }),
-                        backgroundColor: Colors.red,
-                        icon: Icons.delete,
-                      )
-                    ]),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: ListTile(
-                        textColor: Colors.black54,
-                        //tileColor: Colors.grey,
-                        trailing: Text(
-                          '₹${collection?.amount}',
-                          style: GoogleFonts.poppins(),
-                        ),
-                        title: Text(collection!.title,
-                            style: GoogleFonts.bodoniModa(fontSize: 25)),
-                        onTap: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => StudentListScreen(
-                              collection: collection,
-                              title: _titleController.text,
-                              amount: _amountController.text,
-                              studentsWithLessThanAmount: [],
-                            ),
-                          ));
-                        },
+          ),
+
+          Expanded(
+            child: ValueListenableBuilder(
+              valueListenable: _collectionsBox.listenable(),
+              builder: (context, Box<Collection> box, _) {
+                if (box.isEmpty) {
+                  return const Center(child: Text('No collections added.'));
+                }
+
+                final collections = box.values.toList();
+
+                return ListView.separated(
+                  separatorBuilder: (context, index) => const SizedBox(),
+                  itemCount: collections.length,
+                  itemBuilder: (context, index) {
+                    final collection = collections[index];
+
+                    // ✅ Filter logic
+                    final paidCount = collection.studentList
+                        .where((s) => s.isSelected)
+                        .length;
+
+                    if (selectedFilter == 'Paid' && paidCount == 0) {
+                      return const SizedBox.shrink();
+                    }
+                    if (selectedFilter == 'Unpaid' &&
+                        paidCount == collection.studentList.length) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Slidable(
+                      endActionPane: ActionPane(
+                        motion: const StretchMotion(),
+                        children: [
+                          SlidableAction(
+                            onPressed: (context) {
+                              _shareCollection(collection);
+                            },
+                            backgroundColor: Colors.blue,
+                            icon: Icons.share,
+                            // label: 'Share',
+                          ),
+                          SlidableAction(
+                            onPressed: ((context) async {
+                              await box.deleteAt(index);
+                              setState(() {});
+                            }),
+                            backgroundColor: Colors.red,
+                            icon: Icons.delete,
+                          )
+                        ],
                       ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: Theme.of(context).cardColor,
+                          ),
+                          child: ListTile(
+                            textColor:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                            trailing: Text(
+                              '₹${collection.amount}',
+                              style: GoogleFonts.poppins(
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface),
+                            ),
+                            title: Text(
+                              collection.title,
+                              style: GoogleFonts.bodoniModa(
+                                  fontSize: 24,
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface),
+                            ),
+                            subtitle: Text(
+                              '$paidCount / ${collection.studentList.length}',
+                              style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant),
+                            ),
+                            onTap: () {
+                              Navigator.of(context).push(MaterialPageRoute(
+                                builder: (context) => StudentListScreen(
+                                  collection: collection,
+                                  title: collection.title,
+                                  amount: collection.amount,
+                                  studentsWithLessThanAmount: [],
+                                ),
+                              ));
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddItemDialog,

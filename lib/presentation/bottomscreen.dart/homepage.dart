@@ -2,10 +2,9 @@ import 'dart:io';
 
 import 'package:_abm/dbmodels/models.dart';
 import 'package:_abm/presentation/mydrawer.dart';
+import 'package:_abm/services/memories_service.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class HomePage extends StatefulWidget {
   final List<Student> studentsWithLessThanAmount;
@@ -17,63 +16,23 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final remainderController = TextEditingController();
-  String remainder = '';
-  DateTime? selectedDateremainder;
+  final MemoriesService _memoriesService = MemoriesService();
   final ImagePicker _picker = ImagePicker();
-  List<File> images = [];
-  List<Map<String, dynamic>> ongoingEvents = [];
-  List<File> memoriesImages = [];
 
-  final Box box = Hive.box('myBox');
-
-  @override
-  void initState() {
-    super.initState();
-    loadMemories();
-  }
-
-  void loadMemories() {
-    List<dynamic> storedMemories = box.get('memories', defaultValue: []);
-    setState(() {
-      memoriesImages =
-          storedMemories.map((memory) => File(memory['imagePath'])).toList();
-    });
-  }
-
-  void saveMemories() {
-    box.put('memories',
-        memoriesImages.map((memory) => {'imagePath': memory.path}).toList());
-  }
-
-  Future<void> pickImageForMemories() async {
+  Future<void> _uploadMemory() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      setState(() {
-        memoriesImages.insert(0, File(image.path));
-      });
-      saveMemories();
-    }
-  }
-
-  Future<void> pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        images.add(File(image.path)); // Add the picked image to the list
-      });
-    }
-  }
-
-  Future<void> requestPermissions() async {
-    var status = await Permission.camera.status;
-    if (!status.isGranted) {
-      await Permission.camera.request();
-    }
-
-    status = await Permission.storage.status;
-    if (!status.isGranted) {
-      await Permission.storage.request();
+      try {
+        await _memoriesService.uploadMemory(File(image.path));
+        setState(() {}); // Trigger rebuild
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Memory uploaded successfully!')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload: $e')),
+        );
+      }
     }
   }
 
@@ -81,117 +40,128 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Center(
+        title: const Center(
           child: Text('A B M'),
         ),
-        backgroundColor: Color.fromRGBO(240, 240, 240, 1.0),
+        backgroundColor: const Color.fromRGBO(240, 240, 240, 1.0),
       ),
       drawer: MyDrawer(),
       backgroundColor: Colors.white70,
       body: ListView(
         children: [
           Padding(
-            padding: const EdgeInsets.only(left: 10),
-            child: Text(
-              'Balance',
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-          ),
-          SizedBox(
-              width: double.infinity,
-              height: 160,
-              //color: Colors.purple.shade100,
-              child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: 10,
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Stack(
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 160,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8.0),
-                              color: Colors.grey.shade300,
-                            ),
-                          ),
-                          Positioned(
-                            bottom: -1,
-                            child: GestureDetector(
-                              onTap: () {
-                                // Navigator.of(context).push(
-                                //     MaterialPageRoute(builder: (context)=>LessThanAmountPage(collection:Collection(title: title, amount: amount, studentList: studentList))));
-                              },
-                              child: Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8.0),
-                                  color: Color.fromRGBO(0, 128, 128, 1),
-                                ),
-                                child: Center(
-                                    child: Text(
-                                  'STATI\n   10',
-                                  style: TextStyle(color: Colors.white),
-                                )),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  })),
-          Padding(
-            padding: const EdgeInsets.only(left: 10),
-            child: Text(
-              'Memories',
-              style: TextStyle(color: Colors.grey.shade600),
+            padding: const EdgeInsets.only(left: 10, right: 10, top: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Memories',
+                  style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+                TextButton.icon(
+                  onPressed: _uploadMemory,
+                  icon: const Icon(Icons.add_a_photo),
+                  label: const Text('Add'),
+                )
+              ],
             ),
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8.0,
-                mainAxisSpacing: 8.0,
-                childAspectRatio: 0.70,
-              ),
-              itemCount: memoriesImages.length + 1,
-              itemBuilder: (context, index) {
-                if (index < memoriesImages.length) {
-                  return GestureDetector(
-                    onLongPress: () {},
-                    onTap: () {
-                      onTapMemories(index);
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8.0),
-                        image: DecorationImage(
-                          image: FileImage(memoriesImages[index]),
-                          fit: BoxFit.cover,
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _memoriesService.getMemoriesStream(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Center(child: Text('Error loading memories'));
+                }
+
+                final memories = snapshot.data ?? [];
+
+                return GridView.builder(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 8.0,
+                    mainAxisSpacing: 8.0,
+                    childAspectRatio: 0.70,
+                  ),
+                  itemCount: memories.length,
+                  itemBuilder: (context, index) {
+                    final memory = memories[index];
+                    return GestureDetector(
+                      onLongPress: () {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text("Delete Memory"),
+                            content: const Text(
+                                "Are you sure you want to delete this memory?"),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text("Cancel"),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  Navigator.pop(ctx);
+                                  try {
+                                    await _memoriesService.deleteMemory(
+                                        memory['id'], memory['image_url']);
+                                    setState(() {}); // Refresh
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Memory deleted successfully')),
+                                    );
+                                  } catch (e) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content:
+                                              Text('Failed to delete: $e')),
+                                    );
+                                  }
+                                },
+                                child: const Text("Delete",
+                                    style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => Dialog(
+                            child: Image.network(
+                              memory['image_url'],
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.broken_image),
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8.0),
+                          color: Colors.grey.shade300,
+                          image: DecorationImage(
+                            image: NetworkImage(memory['image_url']),
+                            fit: BoxFit.cover,
+                            onError: (exception, stackTrace) {},
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                } else {
-                  return GestureDetector(
-                    onTap: pickImageForMemories,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8.0),
-                        color: Colors.grey.shade300,
-                      ),
-                      child:
-                          Icon(Icons.add_a_photo, color: Colors.grey.shade700),
-                    ),
-                  );
-                }
+                    );
+                  },
+                );
               },
             ),
           ),
@@ -199,31 +169,4 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-
-  void onTapMemories(int currentIndex) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          contentPadding: EdgeInsets.zero,
-          content: SizedBox(
-            width: double.maxFinite,
-            height: MediaQuery.of(context).size.height * 0.6,
-            child: Image.file(
-              memoriesImages[currentIndex],
-              fit: BoxFit.cover,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // void deleteImage(int index) {
-  //   setState(() {
-  //     memoriesImages.removeAt(index); // Remove image from list
-  //     isLongPressed.removeAt(index); // Remove from isLongPressed list
-  //   });
-  //   saveMemories(); // Update Hive storage
-  // }
 }

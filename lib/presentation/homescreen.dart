@@ -33,17 +33,17 @@ class _HomescreenState extends State<Homescreen> {
     return Scaffold(
       body: _screens[_selectedIndex],
       bottomNavigationBar: CurvedNavigationBar(
-        backgroundColor: Colors.white, // Color under the nav bar
-        color: Color.fromRGBO(240, 240, 240, 1.0),
-        buttonBackgroundColor: const Color.fromRGBO(240, 240, 240,
-            1.0), //253,245,230  188,136,93 Color of the selected item
+        backgroundColor:
+            Theme.of(context).scaffoldBackgroundColor, // Adapt to theme
+        color: Theme.of(context).appBarTheme.backgroundColor ?? Colors.white,
+        buttonBackgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         height: 60, // Adjust the height if needed
         index: _selectedIndex,
         items: const <Widget>[
           Icon(Icons.home),
           Icon(Icons.list, size: 30),
           Icon(Icons.calculate, size: 30),
-          Icon(Icons.account_circle_rounded, size: 30),
+          // Icon(Icons.account_circle_rounded, size: 30),
         ],
         onTap: _onItemTapped,
         animationDuration:

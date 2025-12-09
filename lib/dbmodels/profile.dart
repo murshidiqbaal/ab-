@@ -4,7 +4,7 @@ part 'profile.g.dart'; // Ensure this file is generated
 
 @HiveType(typeId: 0)
 class Profile extends HiveObject {
-  @HiveField(0)
+  @HiveField(11)
   String? name;
 
   @HiveField(1)

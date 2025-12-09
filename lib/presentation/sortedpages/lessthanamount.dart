@@ -11,8 +11,8 @@ class LessThanAmountPage extends StatelessWidget {
   Widget build(BuildContext context) {
     List<Student> lessThanAmountStudents =
         collection.studentList.where((student) {
-      int balance = int.tryParse(student.balance ?? '0') ?? 0;
-      int amount = int.tryParse(collection.amount) ?? 0;
+      double balance = student.balance ?? 0.0;
+      double amount = double.tryParse(collection.amount) ?? 0.0;
       return balance < amount;
     }).toList();
 

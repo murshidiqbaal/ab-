@@ -8,7 +8,7 @@ part of 'calculation_history.dart';
 
 class CalculationHistoryAdapter extends TypeAdapter<CalculationHistory> {
   @override
-  final int typeId = 0;
+  final int typeId = 15;
 
   @override
   CalculationHistory read(BinaryReader reader) {
@@ -17,7 +17,7 @@ class CalculationHistoryAdapter extends TypeAdapter<CalculationHistory> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return CalculationHistory(
-      question: fields[0] as String,
+      question: fields[12] as String,
       answer: fields[1] as String,
       date: fields[2] as DateTime,
       note: fields[3] as String?,
@@ -28,7 +28,7 @@ class CalculationHistoryAdapter extends TypeAdapter<CalculationHistory> {
   void write(BinaryWriter writer, CalculationHistory obj) {
     writer
       ..writeByte(4)
-      ..writeByte(0)
+      ..writeByte(12)
       ..write(obj.question)
       ..writeByte(1)
       ..write(obj.answer)

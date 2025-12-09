@@ -2,7 +2,7 @@ import 'package:hive/hive.dart';
 
 part 'models.g.dart';
 
-@HiveType(typeId: 0)
+@HiveType(typeId: 1)
 class Student {
   @HiveField(0)
   String name;
@@ -14,21 +14,21 @@ class Student {
   String paymentMethod;
 
   @HiveField(3)
-  String? balance;
+  double? balance;
 
-  // @HiveField(4)
-  // List<Student> studentsWithLessThanAmount;
+  @HiveField(4)
+  List<Student> studentsWithLessThanAmount;
 
   Student({
     required this.name,
     this.isSelected = false,
     this.paymentMethod = '',
     this.balance,
-    // required this.studentsWithLessThanAmount,
+    required this.studentsWithLessThanAmount,
   });
 }
 
-@HiveType(typeId: 1)
+@HiveType(typeId: 2)
 class Collection extends HiveObject {
   @HiveField(0)
   String title;
@@ -39,9 +39,13 @@ class Collection extends HiveObject {
   @HiveField(2)
   List<Student> studentList;
 
+  // @HiveField(3)
+  // int selectedOption;
+
   Collection({
     required this.title,
     required this.amount,
     required this.studentList,
+    // required this.selectedOption,
   });
 }

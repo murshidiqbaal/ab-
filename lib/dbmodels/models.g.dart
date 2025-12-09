@@ -20,14 +20,15 @@ class StudentAdapter extends TypeAdapter<Student> {
       name: fields[0] as String,
       isSelected: fields[1] as bool,
       paymentMethod: fields[2] as String,
-      balance: fields[3] as String?,
+      balance: fields[3] as double?,
+      studentsWithLessThanAmount: (fields[4] as List).cast<Student>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Student obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -35,7 +36,9 @@ class StudentAdapter extends TypeAdapter<Student> {
       ..writeByte(2)
       ..write(obj.paymentMethod)
       ..writeByte(3)
-      ..write(obj.balance);
+      ..write(obj.balance)
+      ..writeByte(4)
+      ..write(obj.studentsWithLessThanAmount);
   }
 
   @override

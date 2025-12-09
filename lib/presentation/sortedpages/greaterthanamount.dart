@@ -10,7 +10,7 @@ class GreaterThanAmountPage extends StatelessWidget {
   Widget build(BuildContext context) {
     List<Student> greaterThanAmountStudents =
         collection.studentList.where((student) {
-      double balance = double.tryParse(student.balance ?? '0') ?? 0;
+      double balance = student.balance ?? 0.0;
       double amount = double.tryParse(collection.amount) ?? 0;
       return balance > amount;
     }).toList();

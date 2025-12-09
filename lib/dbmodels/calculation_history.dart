@@ -2,9 +2,9 @@ import 'package:hive/hive.dart';
 
 part 'calculation_history.g.dart'; // Ensure this part file is generated with build_runner
 
-@HiveType(typeId: 0) // Unique type ID for this adapter
+@HiveType(typeId: 15) // Unique type ID for this adapter
 class CalculationHistory extends HiveObject {
-  @HiveField(0)
+  @HiveField(12)
   final String question; // Stores the mathematical question
 
   @HiveField(1)
