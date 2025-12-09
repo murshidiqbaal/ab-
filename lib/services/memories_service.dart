@@ -11,7 +11,7 @@ class MemoriesService {
   Future<void> uploadMemory(File imageFile) async {
     try {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final path = '$fileName';
+      final path = fileName;
 
       // Upload to Storage
       await _client.storage.from(_bucketName).upload(path, imageFile);

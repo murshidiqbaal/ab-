@@ -3,12 +3,12 @@ import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:slide_to_act/slide_to_act.dart';
 
 import '../../constants/mytextfield.dart';
 import '../../dbmodels/models.dart';
+import '../../services/database_service.dart';
 import '../studentlist.dart';
 
 class ListScreen extends StatefulWidget {
@@ -21,10 +21,9 @@ class ListScreen extends StatefulWidget {
 class _ListScreenState extends State<ListScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
-  final Box<Collection> _collectionsBox =
-      Hive.box<Collection>('collectionsBox');
+  final DatabaseService _databaseService = DatabaseService();
 
-  String selectedFilter = 'All'; // ✅ Filter control (All, Paid, Unpaid)
+  // String selectedFilter = 'All'; // Filter disabled for Supabase MVP
 
   final List<String> studentNames = [
     'ABHIJITH MOHANAN',
@@ -96,7 +95,7 @@ class _ListScreenState extends State<ListScreen> {
     'FAYAZ P AJIMS',
   ];
 
-  void _addItem(String name, String amount) {
+  void _addItem(String name, String amount) async {
     final List<Student> students = studentNames
         .map((studentName) => Student(
               name: studentName,
@@ -107,13 +106,7 @@ class _ListScreenState extends State<ListScreen> {
             ))
         .toList();
 
-    final collection = Collection(
-      title: name,
-      amount: amount,
-      studentList: students,
-    );
-
-    _collectionsBox.add(collection);
+    await _databaseService.addCollection(name, amount, students);
     setState(() {});
   }
 
@@ -166,15 +159,11 @@ class _ListScreenState extends State<ListScreen> {
   }
 
   void _shareCollection(Collection collection) {
+    // Sharing relies on studentList, which might be empty here in Stream.
+    // For now, we only share the header or implement fetching.
+    // Ideally pass to StudentListScreen or fetch before share.
     String text =
-        '*Collection:* ${collection.title}\n*Amount:* ${collection.amount}\n*Selected:* ${collection.studentList.where((s) => s.isSelected).length}/${collection.studentList.length}\n\n';
-    for (int i = 0; i < collection.studentList.length; i++) {
-      var student = collection.studentList[i];
-      String status = student.isSelected ? 'Paid' : 'Pending';
-      String paymentInfo =
-          student.paymentMethod.isNotEmpty ? '(${student.paymentMethod})' : '';
-      text += '${i + 1}. ${student.name} : $status $paymentInfo\n';
-    }
+        '*Collection:* ${collection.title}\n*Amount:* ${collection.amount}\n(Open collection to view details)';
     Share.share(text, subject: 'Collection Report');
   }
 
@@ -202,41 +191,48 @@ class _ListScreenState extends State<ListScreen> {
       ),
       body: Column(
         children: [
-          // ✅ Filter dropdown
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text('Filter: ',
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
-                DropdownButton<String>(
-                  value: selectedFilter,
-                  items: ['All', 'Paid', 'Unpaid']
-                      .map((e) => DropdownMenuItem(
-                            value: e,
-                            child: Text(e),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedFilter = value!;
-                    });
-                  },
-                ),
-              ],
-            ),
-          ),
+          // Filter Removed for MVP
+          // Padding(
+          //   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          //   child: Row(
+          //     mainAxisAlignment: MainAxisAlignment.end,
+          //     children: [
+          //       Text('Filter: ',
+          //           style: GoogleFonts.poppins(fontWeight: FontWeight.w500)),
+          //       DropdownButton<String>(
+          //         value: selectedFilter,
+          //         items: ['All', 'Paid', 'Unpaid']
+          //             .map((e) => DropdownMenuItem(
+          //                   value: e,
+          //                   child: Text(e),
+          //                 ))
+          //             .toList(),
+          //         onChanged: (value) {
+          //           setState(() {
+          //             selectedFilter = value!;
+          //           });
+          //         },
+          //       ),
+          //     ],
+          //   ),
+          // ),
 
           Expanded(
-            child: ValueListenableBuilder(
-              valueListenable: _collectionsBox.listenable(),
-              builder: (context, Box<Collection> box, _) {
-                if (box.isEmpty) {
-                  return const Center(child: Text('No collections added.'));
+            child: StreamBuilder<List<Collection>>(
+              stream: _databaseService.getCollectionsStream(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
                 }
 
-                final collections = box.values.toList();
+                final collections = snapshot.data ?? [];
+
+                if (collections.isEmpty) {
+                  return const Center(child: Text('No collections added.'));
+                }
 
                 return ListView.separated(
                   separatorBuilder: (context, index) => const SizedBox(),
@@ -244,18 +240,7 @@ class _ListScreenState extends State<ListScreen> {
                   itemBuilder: (context, index) {
                     final collection = collections[index];
 
-                    // ✅ Filter logic
-                    final paidCount = collection.studentList
-                        .where((s) => s.isSelected)
-                        .length;
-
-                    if (selectedFilter == 'Paid' && paidCount == 0) {
-                      return const SizedBox.shrink();
-                    }
-                    if (selectedFilter == 'Unpaid' &&
-                        paidCount == collection.studentList.length) {
-                      return const SizedBox.shrink();
-                    }
+                    // Filter logic removed for MVP as studentList is empty
 
                     return Slidable(
                       endActionPane: ActionPane(
@@ -267,12 +252,13 @@ class _ListScreenState extends State<ListScreen> {
                             },
                             backgroundColor: Colors.blue,
                             icon: Icons.share,
-                            // label: 'Share',
                           ),
                           SlidableAction(
                             onPressed: ((context) async {
-                              await box.deleteAt(index);
-                              setState(() {});
+                              if (collection.id != null) {
+                                await _databaseService
+                                    .deleteCollection(collection.id!);
+                              }
                             }),
                             backgroundColor: Colors.red,
                             icon: Icons.delete,
@@ -302,13 +288,35 @@ class _ListScreenState extends State<ListScreen> {
                                   color:
                                       Theme.of(context).colorScheme.onSurface),
                             ),
-                            subtitle: Text(
-                              '$paidCount / ${collection.studentList.length}',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 14,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant),
+                            subtitle: StreamBuilder<Map<String, int>>(
+                              stream: _databaseService
+                                  .getCollectionStatsStream(collection.id!),
+                              builder: (context, statsSnapshot) {
+                                if (statsSnapshot.hasData) {
+                                  final total = statsSnapshot.data!['total'];
+                                  final paid = statsSnapshot.data!['paid'];
+                                  return Text(
+                                    '$paid/$total Paid',
+                                    style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        color: statsSnapshot.hasData
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant),
+                                  );
+                                }
+                                return Text(
+                                  'Loading...',
+                                  style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant),
+                                );
+                              },
                             ),
                             onTap: () {
                               Navigator.of(context).push(MaterialPageRoute(

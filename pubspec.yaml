@@ -58,10 +58,12 @@ dependencies:
  
   drawer_manager: ^0.0.4
   excel: ^4.0.6
+  shimmer: ^3.0.0
   path_provider: ^2.1.5
   clipboard: ^3.0.5
   supabase: ^2.10.0
   supabase_flutter: ^2.10.3
+  file_picker: ^10.3.7
 
 dev_dependencies:
   flutter_test:

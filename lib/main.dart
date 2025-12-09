@@ -72,26 +72,47 @@ class MyApp extends StatelessWidget {
           ),
           darkTheme: ThemeData(
             brightness: Brightness.dark,
-            scaffoldBackgroundColor: const Color(0xFF000000), // Deep Black
-            primaryColor: const Color(0xFF0A57FF), // Neon Electric Blue
+            scaffoldBackgroundColor: const Color(0xFF000000), // Pitch Black
+            primaryColor: const Color(0xFF2979FF), // Neon Blue
+            cardColor: const Color(0xFF1C1C1E), // Dark Gray Surface
+            dividerColor: const Color(0xFF2C2C2E),
             colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF0A57FF),
-              secondary: Color(0xFFB8B8B8), // Secondary Button
-              surface: Color(0xFF111111), // Dark Card
-              onSurface: Color(0xFFFFFFFF), // Primary Text
-              onSurfaceVariant: Color(0xFFB8B8B8), // Secondary Text
-              outline: Color(0xFF1F1F1F), // Outline Stroke
-              tertiary: Color(0xFF2F8DFF), // Icon Highlight
+              primary: Color(0xFF2979FF), // Neon Blue
+              secondary: Color(0xFF00E5FF), // Cyan Accent
+              surface: Color(0xFF1C1C1E), // Dark Surface
+              onSurface: Color(0xFFFFFFFF), // White Text
+              onSurfaceVariant: Color(0xFFA1A1A1), // Light Gray Text
+              outline: Color(0xFF2C2C2E), // Subtle Borders
+              tertiary: Color(0xFFBB86FC), // Purple Accent
             ),
             appBarTheme: const AppBarTheme(
               backgroundColor: Color(0xFF000000),
               elevation: 0,
+              centerTitle: true,
               iconTheme: IconThemeData(color: Color(0xFFFFFFFF)),
-              titleTextStyle: TextStyle(color: Color(0xFFFFFFFF), fontSize: 20),
+              titleTextStyle: TextStyle(
+                color: Color(0xFFFFFFFF),
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
             ),
-            cardColor: const Color(0xFF111111),
-            dividerColor: const Color(0xFF1F1F1F),
             useMaterial3: true,
+            // Add other component themes for consistency
+            floatingActionButtonTheme: const FloatingActionButtonThemeData(
+              backgroundColor: Color(0xFF2979FF),
+              foregroundColor: Colors.white,
+            ),
+            dialogTheme: DialogThemeData(
+              backgroundColor: const Color(0xFF1C1C1E),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+            ),
+            snackBarTheme: const SnackBarThemeData(
+              backgroundColor: Color(0xFF2C2C2E),
+              contentTextStyle: TextStyle(color: Colors.white),
+              behavior: SnackBarBehavior.floating,
+            ),
           ),
           home: const ResponsiveLayout(
             mobileScaffold: MobileScreen(),
