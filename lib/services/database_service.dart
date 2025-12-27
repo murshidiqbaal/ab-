@@ -87,4 +87,19 @@ class DatabaseService {
       // 'name': student.name, // If names are editable
     }).eq('id', student.id!);
   }
+
+  /// Delete a student from a collection
+  Future<void> deleteStudent(int studentId) async {
+    await _client.from(_studentsTable).delete().eq('id', studentId);
+  }
+
+  /// Add new students to an existing collection
+  Future<void> addStudents(int collectionId, List<Student> students) async {
+    final studentsData = students.map((student) {
+      final json = student.toJson();
+      json['collection_id'] = collectionId;
+      return json;
+    }).toList();
+    await _client.from(_studentsTable).insert(studentsData);
+  }
 }

@@ -6,6 +6,7 @@ import 'package:_abm/services/memories_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shimmer/shimmer.dart';
 
 class HomePage extends StatefulWidget {
   final List<Student> studentsWithLessThanAmount;
@@ -253,12 +254,6 @@ class _DarkHomePage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        // actions: [
-        //   IconButton(
-        //     onPressed: () {},
-        //     icon: const Icon(Icons.notifications_none_rounded),
-        //   ),
-        // ],
       ),
       drawer: MyDrawer(),
       body: Container(
@@ -291,14 +286,6 @@ class _DarkHomePage extends StatelessWidget {
                       color: Colors.white70,
                     ),
                   ),
-                  // Text(
-                  //   'Your Memories',
-                  //   style: GoogleFonts.outfit(
-                  //     fontSize: 32,
-                  //     fontWeight: FontWeight.bold,
-                  //     color: Colors.white,
-                  //   ),
-                  // ),
                 ],
               ),
             ),
@@ -430,52 +417,122 @@ class _DarkHomePage extends StatelessWidget {
                             context: context,
                             builder: (_) => Dialog(
                               backgroundColor: Colors.transparent,
-                              insetPadding: const EdgeInsets.all(10),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: InteractiveViewer(
-                                  child: Image.network(
-                                    memory['image_url'],
-                                    fit: BoxFit.contain,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Icon(Icons.broken_image,
-                                                size: 50, color: Colors.white),
+                              insetPadding: const EdgeInsets.all(20),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // The Frame
+                                  Container(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        16, 16, 16, 50),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(4),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.5),
+                                          blurRadius: 20,
+                                          spreadRadius: 5,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(2),
+                                          child: InteractiveViewer(
+                                            minScale: 0.1,
+                                            maxScale: 5.0,
+                                            child: Image.network(
+                                              memory['image_url'],
+                                              fit: BoxFit.contain,
+                                              errorBuilder: (context, error,
+                                                      stackTrace) =>
+                                                  const Icon(Icons.broken_image,
+                                                      size: 50),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          'Memories',
+                                          style: GoogleFonts.caveat(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
+                                  // Close Button
+                                  Positioned(
+                                    top: 0,
+                                    right: 0,
+                                    child: GestureDetector(
+                                      onTap: () => Navigator.pop(context),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black54,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.close,
+                                            color: Colors.white, size: 20),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
                         },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20.0),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 10,
-                                offset: const Offset(0, 5),
-                              ),
-                            ],
-                            image: DecorationImage(
-                              image: NetworkImage(memory['image_url']),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                          child: Container(
-                            decoration: BoxDecoration(
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // 1. Image with Shimmer Loading
+                            ClipRRect(
                               borderRadius: BorderRadius.circular(20.0),
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.black.withOpacity(0.6),
-                                ],
-                                stops: const [0.7, 1.0],
+                              child: Image.network(
+                                memory['image_url'],
+                                fit: BoxFit.cover,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Shimmer.fromColors(
+                                    baseColor: Colors.grey[800]!,
+                                    highlightColor: Colors.grey[600]!,
+                                    child: Container(
+                                      color: Colors.grey[800],
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                  color: Colors.grey[900],
+                                  child: const Icon(Icons.broken_image,
+                                      color: Colors.white54),
+                                ),
                               ),
                             ),
-                          ),
+                            // 2. Gradient Overlay
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20.0),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black.withOpacity(0.6),
+                                  ],
+                                  stops: const [0.7, 1.0],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     },

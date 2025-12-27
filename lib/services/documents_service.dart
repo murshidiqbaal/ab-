@@ -10,22 +10,34 @@ class DocumentsService {
   // 1. Upload Document
   Future<void> uploadDocument(File file) async {
     try {
-      final fileName =
-          '${DateTime.now().millisecondsSinceEpoch}_${file.path.split(Platform.pathSeparator).last}';
+      final user = _client.auth.currentUser;
+
+      // Sanitize filename: remove spaces and special characters for Storage Path
+      final originalName = file.path.split(Platform.pathSeparator).last;
+      final cleanName =
+          originalName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_$cleanName';
       final path = fileName;
 
       // Upload to Storage
-      await _client.storage.from(_bucketName).upload(path, file);
+      await _client.storage.from(_bucketName).upload(
+            path,
+            file,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+          );
 
       // Get Public URL
       final fileUrl = _client.storage.from(_bucketName).getPublicUrl(path);
 
       // Insert into Table
-      await _client.from(_tableName).insert({
-        'name': file.path.split(Platform.pathSeparator).last,
+      final data = {
+        'name': originalName,
         'url': fileUrl,
         'created_at': DateTime.now().toIso8601String(),
-      });
+        if (user != null) 'user_id': user.id,
+      };
+
+      await _client.from(_tableName).insert(data);
     } catch (e) {
       throw Exception('Error uploading document: $e');
     }

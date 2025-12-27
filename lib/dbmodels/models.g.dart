@@ -8,7 +8,7 @@ part of 'models.dart';
 
 class StudentAdapter extends TypeAdapter<Student> {
   @override
-  final int typeId = 0;
+  final int typeId = 1;
 
   @override
   Student read(BinaryReader reader) {
@@ -22,13 +22,15 @@ class StudentAdapter extends TypeAdapter<Student> {
       paymentMethod: fields[2] as String,
       balance: fields[3] as double?,
       studentsWithLessThanAmount: (fields[4] as List).cast<Student>(),
+      id: fields[5] as int?,
+      collectionId: fields[6] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Student obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -38,7 +40,11 @@ class StudentAdapter extends TypeAdapter<Student> {
       ..writeByte(3)
       ..write(obj.balance)
       ..writeByte(4)
-      ..write(obj.studentsWithLessThanAmount);
+      ..write(obj.studentsWithLessThanAmount)
+      ..writeByte(5)
+      ..write(obj.id)
+      ..writeByte(6)
+      ..write(obj.collectionId);
   }
 
   @override
@@ -54,7 +60,7 @@ class StudentAdapter extends TypeAdapter<Student> {
 
 class CollectionAdapter extends TypeAdapter<Collection> {
   @override
-  final int typeId = 1;
+  final int typeId = 2;
 
   @override
   Collection read(BinaryReader reader) {
@@ -66,19 +72,22 @@ class CollectionAdapter extends TypeAdapter<Collection> {
       title: fields[0] as String,
       amount: fields[1] as String,
       studentList: (fields[2] as List).cast<Student>(),
+      id: fields[3] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Collection obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.title)
       ..writeByte(1)
       ..write(obj.amount)
       ..writeByte(2)
-      ..write(obj.studentList);
+      ..write(obj.studentList)
+      ..writeByte(3)
+      ..write(obj.id);
   }
 
   @override

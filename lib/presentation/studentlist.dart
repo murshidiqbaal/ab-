@@ -3,10 +3,12 @@
 import 'package:_abm/constants/mytextfield.dart';
 import 'package:_abm/utils/share_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../dbmodels/models.dart';
 import '../services/database_service.dart';
+import '../constants/student_data.dart';
 
 class StudentListScreen extends StatefulWidget {
   final Collection collection;
@@ -39,7 +41,6 @@ class _StudentListScreenState extends State<StudentListScreen> {
     // No local calculation needed, StreamBuilder handles it
   }
 
-  // Helper to calculate totals from a list of students
   // Helper to calculate totals from a list of students
   Map<String, int> _calculateTotals(List<Student> students) {
     int total = 0;
@@ -84,6 +85,10 @@ class _StudentListScreenState extends State<StudentListScreen> {
       if (!newSelected) {
         student.paymentMethod = '';
         student.balance = null;
+      } else {
+        // Fix: Reset balance to null (Full Payment) when selected
+        // This prevents immediate negative value increment.
+        student.balance = null;
       }
     });
 
@@ -94,6 +99,111 @@ class _StudentListScreenState extends State<StudentListScreen> {
         _showPaymentDialog(student);
       }
     });
+  }
+
+  Future<void> _deleteStudent(Student student) async {
+    if (student.id != null) {
+      await _databaseService.deleteStudent(student.id!);
+      setState(() {});
+    }
+  }
+
+  void _showAddStudentsDialog() {
+    Set<String> selectedNewStudents = {};
+    String dialogSearchQuery = '';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setState) {
+          final filteredMasterList = masterStudentList
+              .where((name) =>
+                  name.toLowerCase().contains(dialogSearchQuery.toLowerCase()))
+              .toList();
+
+          return AlertDialog(
+            title: const Text('Add Students'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Search...',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (val) {
+                      setState(() {
+                        dialogSearchQuery = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: filteredMasterList.length,
+                      itemBuilder: (context, index) {
+                        final name = filteredMasterList[index];
+                        final isSelected = selectedNewStudents.contains(name);
+                        return CheckboxListTile(
+                          title: Text(name),
+                          value: isSelected,
+                          onChanged: (val) {
+                            setState(() {
+                              if (val == true) {
+                                selectedNewStudents.add(name);
+                              } else {
+                                selectedNewStudents.remove(name);
+                              }
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (selectedNewStudents.isNotEmpty &&
+                      widget.collection.id != null) {
+                    final newStudents = selectedNewStudents.map((name) {
+                      return Student(
+                        name: name,
+                        isSelected: false,
+                        studentsWithLessThanAmount: [],
+                        balance: 0.0,
+                        paymentMethod: '',
+                      );
+                    }).toList();
+
+                    await _databaseService.addStudents(
+                        widget.collection.id!, newStudents);
+                    // ignore: use_build_context_synchronously
+                    Navigator.pop(context);
+                    // ignore: use_build_context_synchronously
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text(
+                              'Added ${newStudents.length} students to list')),
+                    );
+                  }
+                },
+                child: const Text('Add'),
+              ),
+            ],
+          );
+        });
+      },
+    );
   }
 
   void _showPaymentDialog(Student student) {
@@ -154,13 +264,6 @@ class _StudentListScreenState extends State<StudentListScreen> {
                     student.paymentMethod = 'GPay';
                   } else if (selector == 2) {
                     student.paymentMethod = 'Liquid';
-                  } else {
-                    // Keep existing or clear? Original code: selector = null -> nothing
-                    // Original code: } else { selector = null; } which didn't set paymentMethod to empty string explicitly unless logic above
-                    // actually, original code logic was: if (selector == 1) ... else if (selector == 2) ... else { selector = null; }
-                    // It didn't clear the payment method if selector was null, it just didn't set it.
-                    // But effectively it retains whatever was set or nothing.
-                    // If we assume user wants to clear if they untick? Button logic in dialog handles selection used checkmarks.
                   }
 
                   _databaseService.updateStudent(student);
@@ -211,18 +314,13 @@ class _StudentListScreenState extends State<StudentListScreen> {
             }
           }
 
-          // Calculate totals based on ALL students (usually totals reflect the whole list, not just search results?
-          // Original code used `_filteredStudents` inside `build` logic implicitly?
-          // Original `_calculateTotal` iterated over `widget.collection.studentList` (ALL students).
-          // So we calculate totals on allStudents.
           final totals = _calculateTotals(allStudents);
 
           // Prepare a Collection object with populated students for export functions
-          // creating a temporary collection object
           final exportCollection = Collection(
               title: widget.collection.title,
               amount: widget.collection.amount,
-              studentList: allStudents, // Must pass all students for export
+              studentList: allStudents,
               id: widget.collection.id);
 
           return Scaffold(
@@ -255,6 +353,11 @@ class _StudentListScreenState extends State<StudentListScreen> {
                 IconButton(
                   icon: const Icon(Icons.search),
                   onPressed: _toggleSearch,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.person_add),
+                  onPressed: _showAddStudentsDialog,
+                  tooltip: 'Add Students',
                 ),
                 PopupMenuButton<String>(
                   onSelected: (value) {
@@ -323,77 +426,105 @@ class _StudentListScreenState extends State<StudentListScreen> {
                                     itemBuilder: (context, index) {
                                       final student = filteredStudents[index];
 
-                                      return ListTile(
-                                        title: Row(
+                                      return Slidable(
+                                        // key: ValueKey(student.id),
+                                        endActionPane: ActionPane(
+                                          motion: const ScrollMotion(),
                                           children: [
-                                            Text(
-                                              '${index + 1}.  ',
-                                              style: TextStyle(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant),
-                                            ),
-                                            Text(
-                                              student.name,
-                                              style: GoogleFonts.electrolize(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurface),
+                                            SlidableAction(
+                                              onPressed: (context) {
+                                                _deleteStudent(student);
+                                              },
+                                              backgroundColor: Colors.red,
+                                              foregroundColor: Colors.white,
+                                              icon: Icons.delete,
+                                              label: 'Delete',
                                             ),
                                           ],
                                         ),
-                                        subtitle: student
-                                                .paymentMethod.isNotEmpty
-                                            ? Row(
-                                                children: [
-                                                  Text(
-                                                    'Payment: ${student.paymentMethod}  ',
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      color:
-                                                          student.paymentMethod ==
-                                                                  'GPay'
-                                                              ? Colors.green
-                                                              : Colors.blue,
+                                        child: ListTile(
+                                          title: Row(
+                                            children: [
+                                              Text(
+                                                '${index + 1}.  ',
+                                                style: TextStyle(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurfaceVariant),
+                                              ),
+                                              Text(
+                                                student.name,
+                                                style: GoogleFonts.electrolize(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .onSurface),
+                                              ),
+                                            ],
+                                          ),
+                                          subtitle: student
+                                                  .paymentMethod.isNotEmpty
+                                              ? Row(
+                                                  children: [
+                                                    Text(
+                                                      'Payment: ${student.paymentMethod}  ',
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        color:
+                                                            student.paymentMethod ==
+                                                                    'GPay'
+                                                                ? Colors.green
+                                                                : Colors.blue,
+                                                      ),
                                                     ),
-                                                  ),
-                                                  if (student.balance != null)
-                                                    Builder(builder: (context) {
-                                                      double paid =
-                                                          student.balance ??
-                                                              0.0;
-                                                      double expected =
-                                                          double.tryParse(widget
-                                                                  .collection
-                                                                  .amount) ??
-                                                              0.0;
-                                                      int diff =
-                                                          (paid - expected)
-                                                              .toInt();
-                                                      return Text(
-                                                        diff > 0
-                                                            ? '+$diff'
-                                                            : '$diff',
-                                                        style: TextStyle(
-                                                          fontSize: 14,
-                                                          color: diff > 0
-                                                              ? Colors.green
-                                                              : Colors.red,
-                                                        ),
-                                                      );
-                                                    }),
-                                                ],
-                                              )
-                                            : null,
-                                        trailing: Checkbox(
-                                          value: student.isSelected,
-                                          onChanged: (bool? value) {
-                                            _toggleSelection(student);
-                                          },
-                                          fillColor:
-                                              MaterialStateProperty.resolveWith(
-                                                  (states) =>
-                                                      Colors.blueAccent),
+                                                    if (student.paymentMethod
+                                                        .isNotEmpty)
+                                                      Builder(
+                                                          builder: (context) {
+                                                        // Logic: Treat null balance as Full Payment (Expected Amount)
+                                                        double expected = double
+                                                                .tryParse(widget
+                                                                    .collection
+                                                                    .amount) ??
+                                                            0.0;
+                                                        double paid =
+                                                            student.balance ??
+                                                                expected;
+
+                                                        int diff =
+                                                            (paid - expected)
+                                                                .toInt();
+
+                                                        // Only show difference if there IS a difference
+                                                        if (diff == 0) {
+                                                          return const SizedBox
+                                                              .shrink();
+                                                        }
+
+                                                        return Text(
+                                                          diff > 0
+                                                              ? '+$diff'
+                                                              : '$diff',
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            color: diff > 0
+                                                                ? Colors.green
+                                                                : Colors.red,
+                                                          ),
+                                                        );
+                                                      }),
+                                                  ],
+                                                )
+                                              : null,
+                                          trailing: Checkbox(
+                                            value: student.isSelected,
+                                            onChanged: (bool? value) {
+                                              _toggleSelection(student);
+                                            },
+                                            fillColor:
+                                                WidgetStateProperty.resolveWith(
+                                                    (states) =>
+                                                        Colors.blueAccent),
+                                          ),
                                         ),
                                       );
                                     },
